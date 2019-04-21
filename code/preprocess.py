@@ -6,8 +6,13 @@ from keras.utils import to_categorical
 import numpy as np
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
-from keras.layers import Embedding, Dense, SpatialDropout1D, Bidirectional, Dropout, CuDNNLSTM, SpatialDropout2D
-from keras.models import Sequential
+from keras.layers import Embedding, Dense, Bidirectional, Dropout, LSTM, Input, Concatenate
+from keras.models import Sequential, Model
+from keras.optimizers import SGD
+from keras.callbacks import TensorBoard
+from keras.layers import concatenate
+from time import time
+
 
 VALIDATION_SPLIT = 0.2
 EMBEDDING_DIM = 50
@@ -136,28 +141,17 @@ def devo_provarla(file_path):
         labels_onehot = list()
         texts = list()
         embedding_index = dict()
-        """ dim_lines = dict()
-        dim_lines2 = dict() """
-        with io.open(file_path + '.unigram', 'r', encoding='utf8') as _file:
+        with io.open(file_path + '.bigram', 'r', encoding='utf8') as _file:
             for line in _file:
                 line = line.strip()
                 texts.append(line)
-                """ if len(line) not in dim_lines:
-                    dim_lines[len(line)] = 1
-                else:
-                    dim_lines[len(line)] += 1 """
         _file.close()
-        tokenizer = Tokenizer(num_words=MAX_NB_WORDS)
+        tokenizer = Tokenizer(oov_token='UNK')
         tokenizer.fit_on_texts(texts)
         sequences = tokenizer.texts_to_sequences(texts)
-        """ for k in sequences:
-            if len(k) not in dim_lines2:
-                dim_lines2[len(k)] = 1
-            else:
-                dim_lines2[len(k)] += 1 """
         word_index = tokenizer.word_index
         print('Found %s unique tokens.' % len(word_index))
-        data = pad_sequences(sequences, maxlen=32)
+        data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LENGTH)
         print('Shape of data tensor:', data.shape)
         with io.open(file_path + '.labels', 'r', encoding='utf8') as label_file:
             for line in label_file:
@@ -165,19 +159,23 @@ def devo_provarla(file_path):
                 for char in line.strip():
                     label_code.append(LABELS[char])
                 labels.append(label_code)
+        #labels = pad_sequences(labels, maxlen=MAX_SEQUENCE_LENGTH, value=-1)
         label_file.close()
         #labels = np.asarray(labels)
         #print('Shape of label tensor:', labels.shape)
         labels_onehot = np.zeros((data.shape[0], data.shape[1], 4))
+        #print(data[72193], labels[72193])
         print('diobono')
         for i, line in enumerate(data):
             zero_count = 0
             for j, word in enumerate(line):
                 if data[i][j] != 0:
-                    labels_onehot[i][j][labels[i][j-zero_count]] = 1
+                    try:
+                        labels_onehot[i][j][labels[i][j-zero_count]] = 1
+                    except Exception as e:
+                        print('Error: ',e)
                 else:
                     zero_count += 1
-            # labels_onehot.append(to_categorical(line))
         #labels_onehot = np.asarray(labels_onehot)
         with io.open(EMBEDDING_FILE_PATH, 'r', encoding='utf8') as _vocab:
             for line in _vocab:
@@ -223,28 +221,58 @@ def devo_provarla(file_path):
         y_val = res['y_val']
         word_index_len = res['word_index_len']
         embedding_matrix = res['embedding_matrix']
+        del res
     """ y_train = np.zeros((69540, 4))
     y_val = np.zeros((17384, 4)) """
 
-    embedding_layer = Embedding(word_index_len + 1,
+    embedding_unigram = Embedding(word_index_len + 1,
                                 EMBEDDING_DIM,
                                 weights=[embedding_matrix],
                                 input_length=MAX_SEQUENCE_LENGTH,
                                 trainable=False)
-    model = Sequential()
-    model.add(embedding_layer)
-    model.add(SpatialDropout1D(0.2))
-    model.add(Bidirectional(CuDNNLSTM(64, return_sequences=True)))
-    model.add(Bidirectional(CuDNNLSTM(32)))
-    model.add(Dropout(0.25))
-    model.add(Dense(units=4, activation='softmax'))
+    unigram_model = Sequential(name='Unigram')
+    unigram_model.add(embedding_unigram)
+    
+    unigram_input = Input(shape=(32,))
+
+    #unigram_input = Input(shape=(x_train.shape[1]))
+    #unigram_input = unigram_model(unigram_input)
+
+    embedding_bigram = Embedding(word_index_len + 1,
+                                EMBEDDING_DIM,
+                                weights=[embedding_matrix],
+                                input_length=MAX_SEQUENCE_LENGTH,
+                                trainable=False)
+    bigram_model = Sequential(name='Bigram')
+    bigram_model.add(embedding_bigram)
+    
+    bigram_input = Input(shape=(32,))
+
+    #bigram_input = Input(shape=(x_train.shape[1]))
+    #bigram_input = bigram_model(bigram_input)
+
+    #model = Sequential()
+    #model.add(Dense(1, input_shape=(32,50,)))
+    model = concatenate([embedding_unigram(unigram_input), embedding_bigram(bigram_input)])
+    model = (Bidirectional(LSTM(256, return_sequences=True, recurrent_dropout=0.1), input_shape=(MAX_SEQUENCE_LENGTH,)))(model)
+    model = (Dense(units=4, activation='softmax'))(model)
+    sgd = SGD(lr=0.04, momentum=0.95)
+    model = Model([unigram_input, bigram_input], model)
     model.compile(loss='categorical_crossentropy',
-                  optimizer='adam', metrics=['accuracy'])
+                  optimizer=sgd, metrics=['accuracy'])
     print(model.summary())
 
-    model.fit(x_train, y_train, validation_data=(x_val, y_val),
-              epochs=5, batch_size=32)
+    tensorboard = TensorBoard(log_dir="logs/{}".format(time()))
 
+    model.fit([x_train, x_train], y_train, validation_data=([x_val, x_val], y_val),
+              epochs=3, batch_size=32, callbacks=[tensorboard])
+    model.save(path2+'savez/first.h5')
 
-devo_provarla(
-    '../../Documents/NLP/resources/preprocessed-data/training/msr_training.utf8')
+    ##############################################
+
+    """ banana = [[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 26, 75, 33, 270, 25, 208, 3, 364, 75, 24, 36, 29, 78, 219, 14, 340, 30, 363, 371, 4]]
+    banana = np.array(banana)
+    model.load_weights(path2+'savez/first.h5')
+    print(model.predict(banana)) """
+
+devo_provarla('../../Documents/NLP/resources/preprocessed-data/training/msr_training.utf8')

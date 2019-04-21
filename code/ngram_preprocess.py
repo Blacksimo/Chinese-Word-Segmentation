@@ -17,12 +17,9 @@ def create_ngram(file_path, unigram=True, bigram=True):
                     #print(bigram)
                     _bigram.write(bigram_tmp+' ')
                 _bigram.write('\n')
-            """ if cnt == 10:
-                break """
-            line = line.strip().split()
             if unigram:
                 #print('Creating Unigram File, line ',cnt)
-                for word in line:
+                for word in line.strip().split():
                     for char in word:
                         _unigram.write(char+' ')
                 _unigram.write('\n')
