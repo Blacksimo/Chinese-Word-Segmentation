@@ -20,10 +20,12 @@ MAX_NB_WORDS = 100
 MAX_SEQUENCE_LENGTH = 32
 folders = ['gold', 'testing', 'training']
 path = '../../Documents/NLP/resources/icwb2-data/'
-path2 = '../../Documents/NLP/resources/preprocessed-data/'
+path2 = 'C:/Users/simo0/Documents/GitHub/Chinese-Word-Segmentation/resources/preprocessed-data/'
 LABELS = {'B': 0, 'I': 1, 'E': 2, 'S': 3}
-SAVE_FILE_PATH = path2 + 'savez/first_try.npz'
-EMBEDDING_FILE_PATH = path2 + 'vocab/embedding_file_small'
+SAVE_FILE_PATH = path2 + 'savez/data_'
+EMBEDDING_PATH = path2 + 'training/msr_training_embed_'
+INPUTS = ['unigram', 'bigram']
+INPUT_FILE_PATH = path2+'training/msr_training.utf8'
 
 
 def preprocess_data():
@@ -136,92 +138,110 @@ def get_embedding_matrices(embedding_file):
 
 
 def devo_provarla(file_path):
-    if not exists(SAVE_FILE_PATH):
-        labels = list()
-        labels_onehot = list()
-        texts = list()
-        embedding_index = dict()
-        with io.open(file_path + '.bigram', 'r', encoding='utf8') as _file:
-            for line in _file:
-                line = line.strip()
-                texts.append(line)
-        _file.close()
-        tokenizer = Tokenizer(oov_token='UNK')
-        tokenizer.fit_on_texts(texts)
-        sequences = tokenizer.texts_to_sequences(texts)
-        word_index = tokenizer.word_index
-        print('Found %s unique tokens.' % len(word_index))
-        data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LENGTH)
-        print('Shape of data tensor:', data.shape)
-        with io.open(file_path + '.labels', 'r', encoding='utf8') as label_file:
-            for line in label_file:
-                label_code = list()
-                for char in line.strip():
-                    label_code.append(LABELS[char])
-                labels.append(label_code)
-        #labels = pad_sequences(labels, maxlen=MAX_SEQUENCE_LENGTH, value=-1)
-        label_file.close()
-        #labels = np.asarray(labels)
-        #print('Shape of label tensor:', labels.shape)
-        labels_onehot = np.zeros((data.shape[0], data.shape[1], 4))
-        #print(data[72193], labels[72193])
-        print('diobono')
-        for i, line in enumerate(data):
-            zero_count = 0
-            for j, word in enumerate(line):
-                if data[i][j] != 0:
-                    try:
-                        labels_onehot[i][j][labels[i][j-zero_count]] = 1
-                    except Exception as e:
-                        print('Error: ',e)
-                else:
-                    zero_count += 1
-        #labels_onehot = np.asarray(labels_onehot)
-        with io.open(EMBEDDING_FILE_PATH, 'r', encoding='utf8') as _vocab:
-            for line in _vocab:
-                line = line.split()
-                word = line[0]
-                coefs = np.asarray(line[1:], dtype='float32')
-                embedding_index[word] = coefs
-        _vocab.close()
-        embedding_matrix = np.zeros((len(word_index) + 1, EMBEDDING_DIM))
-        for word, i in word_index.items():
-            if i == 0:
-                print(word, i)
-            embedding_vector = embedding_index.get(word)
-            if embedding_vector is not None:
-                # words not found in embedding index will be all-zeros.
-                embedding_matrix[i] = embedding_vector
-        # print('ciaone')
 
-        # split the data into a training set and a validation set
-        indices = np.arange(data.shape[0])
-        np.random.shuffle(indices)
-        data = data[indices]
-        labels_onehot = labels_onehot[indices]
-        nb_validation_samples = int(VALIDATION_SPLIT * data.shape[0])
-        word_index_len = len(word_index)
 
-        x_train = data[:-nb_validation_samples]
-        y_train = labels_onehot[:-nb_validation_samples]
-        x_val = data[-nb_validation_samples:]
-        y_val = labels_onehot[-nb_validation_samples:]
+    labels = list()
+    labels_onehot = list()
+    texts = list()
+    #x_train = dict()
+    #x_val = dict()
+    word_index_len = dict()
+    #embedding_dict = dict()
 
-        print('Saving npz file')
-        np.savez(SAVE_FILE_PATH, x_train=x_train,
-                 y_train=y_train, x_val=x_val, y_val=y_val,
-                 word_index_len=word_index_len, embedding_matrix=embedding_matrix)
 
-    else:
-        print('Loading npz file')
-        res = np.load(SAVE_FILE_PATH)
-        x_train = res['x_train']
-        y_train = res['y_train']
-        x_val = res['x_val']
-        y_val = res['y_val']
-        word_index_len = res['word_index_len']
-        embedding_matrix = res['embedding_matrix']
-        del res
+    for input_name in INPUTS:
+        
+        if not exists(SAVE_FILE_PATH + input_name + '.npz'):
+
+            with io.open(file_path + '.' + input_name, 'r', encoding='utf8') as input_file:
+                for line in input_file:
+                    line = line.strip()
+                    texts.append(line)
+            input_file.close()
+            tokenizer = Tokenizer(oov_token='UNK')
+            tokenizer.fit_on_texts(texts)
+            sequences = tokenizer.texts_to_sequences(texts)
+            word_index = tokenizer.word_index
+            print('Found %s unique tokens.' % len(word_index))
+            data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LENGTH)
+            print('Shape of data tensor:', data.shape)
+
+            embedding_index = dict()
+            with io.open(EMBEDDING_PATH + input_name, 'r', encoding='utf8') as embedding_file:
+                for line in embedding_file:
+                    line = line.split()
+                    word = line[0]
+                    coefs = np.asarray(line[1:], dtype='float32')
+                    embedding_index[word] = coefs
+            embedding_file.close()
+            embedding_matrix = np.zeros((len(word_index) + 1, EMBEDDING_DIM))
+            for word, i in word_index.items():
+                if i == 0:
+                    print(word, i)
+                embedding_vector = embedding_index.get(word)
+                if embedding_vector is not None:
+                    # words not found in embedding index will be all-zeros.
+                    embedding_matrix[i] = embedding_vector
+            # print('ciaone')
+
+            """ indices = np.arange(data.shape[0])
+            np.random.shuffle(indices)
+            data = data[indices]
+            labels_onehot = labels_onehot[indices] """
+
+            #embedding_dict = embedding_matrix
+            nb_validation_samples = int(VALIDATION_SPLIT * data.shape[0])
+            word_index_len = len(word_index)
+            x_train = data[:-nb_validation_samples]
+            x_val = data[-nb_validation_samples:]
+
+            if input_name == 'unigram':
+                with io.open(file_path + '.labels', 'r', encoding='utf8') as label_file:
+                    for line in label_file:
+                        label_code = list()
+                        for char in line.strip():
+                            label_code.append(LABELS[char])
+                        labels.append(label_code)
+                #labels = pad_sequences(labels, maxlen=MAX_SEQUENCE_LENGTH, value=-1)
+                label_file.close()
+                #labels = np.asarray(labels)
+                #print('Shape of label tensor:', labels.shape)
+                labels_onehot = np.zeros((data.shape[0], data.shape[1], 4))
+                #print(data[72193], labels[72193])
+                for i, line in enumerate(data):
+                    zero_count = 0
+                    for j, word in enumerate(line):
+                        if data[i][j] != 0:
+                            try:
+                                labels_onehot[i][j][labels[i][j-zero_count]] = 1
+                            except Exception as e:
+                                print('Error: ',e)
+                        else:
+                            zero_count += 1
+                #labels_onehot = np.asarray(labels_onehot)
+                
+                y_train = labels_onehot[:-nb_validation_samples]
+                y_val = labels_onehot[-nb_validation_samples:]
+        
+
+            # split the data into a training set and a validation set
+            print('Saving npz file')
+            np.savez(SAVE_FILE_PATH + input_name, x_train=x_train,
+                    y_train=y_train, x_val=x_val, y_val=y_val,
+                    word_index_len=word_index_len, embedding_matrix=embedding_matrix)
+
+        # RIPARTIRE DA QUIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
+
+        else:
+            print('Loading npz file')
+            res = np.load(SAVE_FILE_PATH)
+            x_train = res['x_train']
+            y_train = res['y_train']
+            x_val = res['x_val']
+            y_val = res['y_val']
+            word_index_len = res['word_index_len']
+            embedding_matrix = res['embedding_matrix']
+            del res
     """ y_train = np.zeros((69540, 4))
     y_val = np.zeros((17384, 4)) """
 
@@ -275,4 +295,4 @@ def devo_provarla(file_path):
     model.load_weights(path2+'savez/first.h5')
     print(model.predict(banana)) """
 
-devo_provarla('../../Documents/NLP/resources/preprocessed-data/training/msr_training.utf8')
+devo_provarla(INPUT_FILE_PATH)
