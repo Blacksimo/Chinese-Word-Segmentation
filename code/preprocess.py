@@ -233,21 +233,28 @@ def devo_provarla(file_path):
         # RIPARTIRE DA QUIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
 
         else:
-            print('Loading npz file')
-            res = np.load(SAVE_FILE_PATH)
-            x_train = res['x_train']
-            y_train = res['y_train']
-            x_val = res['x_val']
-            y_val = res['y_val']
-            word_index_len = res['word_index_len']
-            embedding_matrix = res['embedding_matrix']
-            del res
+            print('Loading {} file'.format(input_name))
+            res = np.load(SAVE_FILE_PATH + input_name + '.npz')
+            if input_name == 'unigram':
+                x_train_uni = res['x_train']
+                y_train_uni = res['y_train']
+                x_val_uni = res['x_val']
+                y_val_uni = res['y_val']
+                word_index_len_uni = res['word_index_len']
+                embedding_matrix_uni = res['embedding_matrix']
+                del res
+            else:
+                x_train_bi = res['x_train']
+                x_val_bi = res['x_val']
+                word_index_len_bi = res['word_index_len']
+                embedding_matrix_bi = res['embedding_matrix']
+                del res
     """ y_train = np.zeros((69540, 4))
     y_val = np.zeros((17384, 4)) """
 
-    embedding_unigram = Embedding(word_index_len + 1,
+    embedding_unigram = Embedding(word_index_len_uni + 1,
                                 EMBEDDING_DIM,
-                                weights=[embedding_matrix],
+                                weights=[embedding_matrix_uni],
                                 input_length=MAX_SEQUENCE_LENGTH,
                                 trainable=False)
     unigram_model = Sequential(name='Unigram')
@@ -258,9 +265,9 @@ def devo_provarla(file_path):
     #unigram_input = Input(shape=(x_train.shape[1]))
     #unigram_input = unigram_model(unigram_input)
 
-    embedding_bigram = Embedding(word_index_len + 1,
+    embedding_bigram = Embedding(word_index_len_bi + 1,
                                 EMBEDDING_DIM,
-                                weights=[embedding_matrix],
+                                weights=[embedding_matrix_bi],
                                 input_length=MAX_SEQUENCE_LENGTH,
                                 trainable=False)
     bigram_model = Sequential(name='Bigram')
@@ -284,7 +291,7 @@ def devo_provarla(file_path):
 
     tensorboard = TensorBoard(log_dir="logs/{}".format(time()))
 
-    model.fit([x_train, x_train], y_train, validation_data=([x_val, x_val], y_val),
+    model.fit([x_train_uni, x_train_bi], y_train_uni, validation_data=([x_val_uni, x_val_bi], y_val_uni),
               epochs=3, batch_size=32, callbacks=[tensorboard])
     model.save(path2+'savez/first.h5')
 
