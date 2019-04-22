@@ -141,18 +141,18 @@ def devo_provarla(file_path):
 
 
     labels = list()
-    labels_onehot = list()
-    texts = list()
+    #labels_onehot = list()
+    #texts = list()
     #x_train = dict()
     #x_val = dict()
-    word_index_len = dict()
+    #word_index_len = dict()
     #embedding_dict = dict()
 
 
     for input_name in INPUTS:
         
         if not exists(SAVE_FILE_PATH + input_name + '.npz'):
-
+            texts = list()
             with io.open(file_path + '.' + input_name, 'r', encoding='utf8') as input_file:
                 for line in input_file:
                     line = line.strip()
