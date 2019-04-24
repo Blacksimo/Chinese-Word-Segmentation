@@ -9,7 +9,7 @@ from keras.preprocessing.sequence import pad_sequences
 from keras.layers import Embedding, Dense, Bidirectional, Dropout, LSTM, Input, Concatenate
 from keras.models import Sequential, Model
 from keras.optimizers import SGD
-from keras.callbacks import TensorBoard
+from keras.callbacks import TensorBoard, ModelCheckpoint
 from keras.layers import concatenate
 from time import time
 
@@ -289,10 +289,14 @@ def devo_provarla(file_path):
                   optimizer=sgd, metrics=['accuracy'])
     print(model.summary())
 
+
+    
+    checkpath = path2 + 'savez/' + 'weights.{epoch:02d}-{val_loss:.2f}.hdf5'
+    avoid_overfit = ModelCheckpoint(checkpath, monitor='val_acc', verbose=1, save_best_only=True)
     tensorboard = TensorBoard(log_dir="logs/{}".format(time()))
 
     model.fit([x_train_uni, x_train_bi], y_train_uni, validation_data=([x_val_uni, x_val_bi], y_val_uni),
-              epochs=3, batch_size=32, callbacks=[tensorboard])
+              epochs=50, batch_size=32, callbacks=[tensorboard,avoid_overfit])
     model.save(path2+'savez/first.h5')
 
     ##############################################
