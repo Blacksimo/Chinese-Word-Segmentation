@@ -137,7 +137,7 @@ def get_embedding_matrices(embedding_file):
 # get_embedding_matrices(path2+'vocab/embedding_file')
 
 
-def devo_provarla(file_path):
+def build_model(file_path):
 
 
     labels = list()
@@ -306,4 +306,4 @@ def devo_provarla(file_path):
     model.load_weights(path2+'savez/first.h5')
     print(model.predict(banana)) """
 
-devo_provarla(INPUT_FILE_PATH)
+build_model(INPUT_FILE_PATH)
