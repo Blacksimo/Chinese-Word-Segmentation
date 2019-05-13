@@ -9,3 +9,6 @@ A Stacked bidirectional LSTM which takes as input a set of strings of chinese ch
 ## The Dataset
 The dataset used as corpus for the training and the embedding matrices is the Microsoft Reaserch (MSR) training set.
 [Link to the dataset](http://sighan.cs.uchicago.edu/bakeoff2005/)
+
+## Results
+Results values and graph are shown in the [Report Paper](blob/master/paper.pdf)
