@@ -11,4 +11,4 @@ The dataset used as corpus for the training and the embedding matrices is the Mi
 [Link to the dataset](http://sighan.cs.uchicago.edu/bakeoff2005/)
 
 ## Results
-Results values and graph are shown in the [Report Paper](blob/master/paper.pdf)
+Results values and graph are shown in the [Report Paper](paper.pdf)
